@@ -40,8 +40,6 @@ ui <- fluidPage(
                 value = 50
             ),
             
-            # p('Out of the past sales data, select the size of the "training set" to train and build a new model. The rest will be used as "test set" to test your new model later on.'),
-            
             hr(),
             
             h3('How to Use?'),
@@ -57,33 +55,6 @@ ui <- fluidPage(
         ),
         
         mainPanel(
-            
-            # fluidRow(
-            #     column(
-            #         width = 4,
-            #         checkboxGroupInput(
-            #             inputId = 'channels',
-            #             label = 'Feature set',
-            #             choices = Channels,
-            #             selected = 'YouTube',
-            #             inline = TRUE
-            #         )
-            #     ),
-            #     
-            #     column(
-            #         width = 4,
-            #         
-            #         sliderInput(
-            #             inputId = 'split',
-            #             label = 'Training set',
-            #             min = 0.05,
-            #             max = 0.95,
-            #             step = 0.05,
-            #             value = 0.80
-            #         )
-            #     )
-            # ),
-            
             tabsetPanel(
                 id = 'tab',
                 
@@ -243,43 +214,18 @@ server <- function(input, output, session) {
             formatStyle(c('Sales'), fontWeight = 'bold')
     }) 
     
-    # feature_correlation <- function(feature) {
-    #     data <- load_selected_data()
-    # 
-    #     CorrTest <- cor.test(data[[feature]], data$Sales)
-    #     print(CorrTest)
-    #     Plabel <- ifelse(CorrTest$p.value < 0.001, 'p < 0.001', paste0('p = ', round(CorrTest$p.value, 3)))
-    #     Plabel
-    # }
-    
     output$explore_plot <- renderPlotly({
         # if (length(input$channels) == 0) {
         #     return (NULL)
         # }
         
         data <- load_data_long()
-        # filter(Channel %in% input$channels)
         
-        # feature <- input$explore_feature
-        # 
-        # if (feature == '') {
-        #     return (NULL)
-        # 
-        # }
-        
-        # feature <- 'Expenses'
-        
-        # CorrTest <- cor.test(data[[feature]], data$Sales)
-        # Plabel <- ifelse(CorrTest$p.value < 0.001, 'p < 0.001', paste0('p = ', round(CorrTest$p.value, 3)))
-        
-        # ggplot(data, aes(.data[[feature]], Sales)) +
         viz <- ggplot(data, aes(x = Expenses, y = Sales)) +
             geom_point(aes(color = Channel)) +
             geom_smooth(formula = y ~ x, method = 'loess', se = FALSE, color = 'blue') +
             facet_grid(rows = vars(Channel), scales = 'free_x') +
             ggtitle(paste0('Advertising Expenses and Sales')) +
-            # geom_text(aes(max(Expenses) * 0.05, max(Sales) * 0.98, label = Channel)) +
-            # ggtitle(paste0('Exploring ', feature, ' and Sales')) +
             theme(
                 plot.title = element_text(face = 'bold', size = 14, hjust = 0.5),
                 legend.position = 'None'
@@ -292,16 +238,6 @@ server <- function(input, output, session) {
                 yaxis = list(fixedrange = TRUE)
             ) %>%
             hide_legend()
-        
-        # annotate(
-        #     'text',
-        #     # label = paste0('R = ', round(CorrTest$estimate, 2), ', ', Plabel),
-        #     label = '', #paste0('R = ', data[['Channel']]),
-        #     x = max(.data[['Channel']], na.rm = TRUE) * 0.1,
-        #     y = max(.data[['Expenses']], na.rm = TRUE) * 0.98,
-        #     color = 'steelblue',
-        #     size = 5
-        # )
     })
     
     explain_significance <- function(s) {
@@ -393,42 +329,6 @@ server <- function(input, output, session) {
         summary(values$model)
     })
 
-    # output$test_table <- renderTable(
-    #     {
-    #         if (length(input$channels) == 0) {
-    #             return (NULL)
-    #         }
-    #         
-    #         if (is.null(values$model)) {
-    #             return (NULL)
-    #         }
-    # 
-    #         data <- load_data()[-values$samples, ]
-    #         model <- values$model
-    # 
-    #         predictions <- predict(model, data)
-    #         RMSE <- RMSE(predictions, data$Sales)
-    #         Percent <- RMSE / mean(data$Sales)
-    #         R2 <- R2(predictions, data$Sales)
-    # 
-    #         print(RMSE)
-    #         print(R2)
-    # 
-    #         data.frame(
-    #             'Result' = c('Test Set Size', 'Root Mean Square Error (RMSE)', 'R-Square (R2)'),
-    #             'Value' = c(nrow(data), RMSE, R2),
-    #             'Meaning' = c('', '', '')
-    #         )                        
-    #     },
-    #     
-    #     colnames = TRUE,
-    #     digits = 2,
-    #     bordered = TRUE,
-    #     striped = TRUE,
-    #     hover = TRUE
-    # )
-    # 
-
     output$test_text <- renderUI({
         if (length(input$channels) == 0) {
             return ('Start with selecting the advertising channels on the left, and the results will be shown here')
@@ -447,7 +347,7 @@ server <- function(input, output, session) {
         Percent <- RMSE / AverageSales * 100
         R2 <- R2(predictions, data$Sales) * 100
 
-        text1 <- sprintf('<p><strong>Root Mean Squared Error (RMSE)</strong> - RMSE measures the average difference between the predicted sales and the actual sales in the test data. The lower it is, the more accurate the model is. The RMSE for this model is %.2f, which is %.2f%% of the average actual sales of %.2f. You can decide whether this variation is acceptable or not.</p>', RMSE, Percent, AverageSales)
+        text1 <- sprintf('<p><strong>Root Mean Squared Error (RMSE)</strong> - RMSE measures the average difference between the predicted sales and the actual sales in the test data. The lower it is, the more accurate the model is. The RMSE for this model is %.2f, which is %.2f%% of the average actual sales of %.2f. You decide whether this margin of error is acceptable or not.</p>', RMSE, Percent, AverageSales)
         text2 <- sprintf('<p><strong>R-squared</strong> - This is the squared correlation between the predicted sales and the actual sales in the test data. The higher it is, the better the model is. The R-squared for this model is %.2f%%.</p>', R2)
         text3 <- sprintf('<p><strong>Residual plot</strong> - You can use the plot below to visually gauge whether the prediction is close enough to the data or not. The yellow dots are the predicted sales, and the other colored dots are the actual sales. The model is good if you see small gaps between them.</p>')
         
@@ -560,9 +460,6 @@ server <- function(input, output, session) {
         newdata <- data.frame(YouTube = input$youtube, Facebook = input$facebook, Newspaper = input$newspaper)
         predicted <- predict(model, newdata)
 
-        # print(estimates)        
-        # print(predicted)
-        
         data <- data %>%
             mutate(
                 x = ifelse(Channel == 'YouTube', input$youtube, ifelse(Channel == 'Facebook', input$facebook, ifelse(Channel == 'Newspaper', input$newspaper, 0))),
