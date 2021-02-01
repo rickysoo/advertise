@@ -1,5 +1,6 @@
 library(shiny)
 library(shinythemes)
+library(shinycustomloader)
 library(tidyverse)
 library(DT)
 library(caret)
@@ -25,18 +26,18 @@ ui <- fluidPage(
                 inputId = 'channels',
                 label = '1. Advertising channels:',
                 choices = Channels,
-                selected = Channels,
+                selected = NULL,
                 inline = TRUE
             ),
             
             sliderInput(
                 inputId = 'split',
-                label = '2. Training set size out of actual sales data:',
+                label = '2. Percentage of past sales data to use to build model:',
                 post = '%',
                 min = 5,
                 max = 95,
                 step = 5,
-                value = 80
+                value = 50
             ),
             
             # p('Out of the past sales data, select the size of the "training set" to train and build a new model. The rest will be used as "test set" to test your new model later on.'),
@@ -95,7 +96,7 @@ ui <- fluidPage(
                     p('In the 200 advertising campaigns below, advertising money was spent on 3 channels (YouTube, Facebook and newspaper) to bring in sales for that campaign.'),
                     
                     br(),
-                    DTOutput('data')
+                    withLoader(DTOutput('data'), loader = 'pacman')
                 ),
                 
                 tabPanel(
@@ -107,7 +108,7 @@ ui <- fluidPage(
                     p('Move your mouse over the colored dots below to find out how much money was spent on the channel and how much sales was generated in each campaign. The blue lines are "regression lines" showing the pattern of the relationship in each channel.'),
                     
                     br(),
-                    plotlyOutput('explore_plot', height = 600)
+                    withLoader(plotlyOutput('explore_plot', height = 600), loader = 'pacman')
                 ),
                 
                 tabPanel(
@@ -119,12 +120,12 @@ ui <- fluidPage(
                     p('As you make your choices, a new model is built on-the-fly and the results are shown below. Try your best to understand the estimates and how they will contribute to the sales generated.'),
                     
                     br(),
-                    tableOutput('model_table'),
-                    textOutput('model_text'),
+                    withLoader(tableOutput('model_table'), loader = 'pacman'),
+                    withLoader(textOutput('model_text'), loader = 'pacman'),
                     
                     br(),
                     p('Below is the technical output of the model training using linear regression:'),
-                    verbatimTextOutput('model_verbatim')
+                    withLoader(verbatimTextOutput('model_verbatim'), loader = 'pacman')
                 ),
                 
                 tabPanel(
@@ -134,8 +135,8 @@ ui <- fluidPage(
                     br(),
                     p('Now let\'s test your model using the "test set" you set aside (the part of the past sales data not used as "training set").'),
 
-                    htmlOutput('test_text'),
-                    plotlyOutput('test_plot', height = 600)
+                    withLoader(htmlOutput('test_text'), loader = 'pacman'),
+                    withLoader(plotlyOutput('test_plot', height = 600), loader = 'pacman')
                 ),
                 
                 tabPanel(
@@ -187,10 +188,10 @@ ui <- fluidPage(
                     
                     br(),
                     p('The table below shows the advertising expenses on each channel, the estimated sales generated from each channel, and the total sales expected. "General" represents the baseline sales to be made even if no money is spent on any advertising.'),
-                    tableOutput('predict_table'),
+                    withLoader(tableOutput('predict_table'), loader = 'pacman'),
                     
                     p('The plot below helps you to visualize the advertising expenses from each channel, and how each channel contributes to the total sales.'),
-                    plotlyOutput('predict_plot', height = 600)
+                    withLoader(plotlyOutput('predict_plot', height = 600), loader = 'pacman')
                 )
             )
         )
@@ -252,9 +253,9 @@ server <- function(input, output, session) {
     # }
     
     output$explore_plot <- renderPlotly({
-        if (length(input$channels) == 0) {
-            return (NULL)
-        }
+        # if (length(input$channels) == 0) {
+        #     return (NULL)
+        # }
         
         data <- load_data_long()
         # filter(Channel %in% input$channels)
@@ -323,6 +324,10 @@ server <- function(input, output, session) {
     
     output$model_table <- renderTable(
         {
+            if (length(input$channels) == 0) {
+                return (NULL)
+            }
+
             if (is.null(values$model)) {
                 return (NULL)
             }
@@ -360,8 +365,12 @@ server <- function(input, output, session) {
     )
     
     output$model_text <- renderText({
+        if (length(input$channels) == 0) {
+            return ('Start with selecting the advertising channels on the left, and the results will be shown here')
+        }
+        
         if (is.null(values$model)) {
-            return (NULL)
+            return ('Start with selecting the advertising channels on the left, and the results will be shown here')
         }
         
         summary <- summary(values$model)
@@ -373,6 +382,10 @@ server <- function(input, output, session) {
     })
     
     output$model_verbatim <- renderPrint({
+        if (length(input$channels) == 0) {
+            return (NULL)
+        }
+        
         if (is.null(values$model)) {
             return ('No model trained yet.')
         }
@@ -418,11 +431,11 @@ server <- function(input, output, session) {
 
     output$test_text <- renderUI({
         if (length(input$channels) == 0) {
-            return (NULL)
+            return ('Start with selecting the advertising channels on the left, and the results will be shown here')
         }
         
         if (is.null(values$model)) {
-            return (NULL)
+            return ('Start with selecting the advertising channels on the left, and the results will be shown here')
         }
 
         data <- load_data()[-values$samples, ]
